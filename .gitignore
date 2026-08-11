@@ -1,0 +1,33 @@
+# envs + secrets
+.venv/
+.env
+.env.*
+!.env.example
+
+# python cache
+__pycache__/
+*.py[cod]
+
+# dist + build artifacts
+dist/
+build/
+*.egg-info/
+
+# test + coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# type + linter
+.mypy_cache/
+.ruff_cache/
+
+# IDEs
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# data
+data/
