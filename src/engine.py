@@ -18,7 +18,9 @@ def prep_game_data(parquet_path: Path) -> pl.DataFrame:
         .str.strip_chars()
         .str.split(" ")
         .alias("words")
-    ])
+    ]).filter(
+        pl.col("words").list.len() > 1 # only movies containing at least 2 words
+    )
 
     edges_df = words_df.with_columns([
         pl.col("words").list.first().alias("first_word"),
