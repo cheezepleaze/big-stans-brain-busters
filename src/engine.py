@@ -3,15 +3,17 @@ from pathlib import Path
 import polars as pl
 
 
+# model: data prep and graph build
+
 def prep_game_data(parquet_path: Path) -> pl.DataFrame:
     """
-    Loads the game graph and creates the cleaned first + last word columns.
+    Loads the movies dataset and builds 3-movie puzzle graph.
     """
 
-    graph_df = pl.read_parquet(parquet_path)
+    movies_df = pl.read_parquet(parquet_path)
 
     # clean titles and extract edge words
-    words_df = graph_df.with_columns([
+    words_df = movies_df.with_columns([
         pl.col("movie_title")
         .str.to_lowercase()
         .str.replace_all(r"[^a-z0-9\s]", "")
@@ -27,7 +29,35 @@ def prep_game_data(parquet_path: Path) -> pl.DataFrame:
         pl.col("words").list.last().alias("last_word")
     ]).drop("words")
 
-    return edges_df
+    # build unique movie pool
+    unique_movies = edges_df.select(["movie_title", "first_word", "last_word"]).unique()
+
+    # self-join: 2-movie chains
+    chains_2 = unique_movies.join(
+        unique_movies, left_on = "last_word", right_on = "first_word", how = "inner", suffix = "_2"
+    ).select([
+        pl.col("movie_title").alias("movie_1"),
+        pl.col("last_word").alias("match_1"),
+        pl.col("movie_titles_2").alias("movie_2"),
+        pl.col("last_word_2").alias("match_2")
+    ]).filter(pl.col("movie_1") != pl.col("movie_2"))
+
+    # master graph: 3-movie chains
+    graph_df = chains_2.join(
+        unique_movies,
+        left_on = "match_2",
+        right_on = "first_word",
+        how = "inner"
+    ).select([
+        pl.col("movie_1"),
+        pl.col("movie_2"),
+        pl.col("movie_title").alias("movie_3")
+    ]).filter( 
+        (pl.col("movie_3") != pl.col("movie_2")) & 
+        (pl.col("movie_3") != pl.col("movie_1")) # ensure no loops
+    )
+
+    return edges_df, graph_df
 
 def find_connections(actor1: str, actor2: str, actor3: str, edges_df: pl.DataFrame) -> pl.DataFrame:
     """
