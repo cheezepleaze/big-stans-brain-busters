@@ -38,7 +38,7 @@ def prep_game_data(parquet_path: Path) -> pl.DataFrame:
     ).select([
         pl.col("movie_title").alias("movie_1"),
         pl.col("last_word").alias("match_1"),
-        pl.col("movie_titles_2").alias("movie_2"),
+        pl.col("movie_title_2").alias("movie_2"),
         pl.col("last_word_2").alias("match_2")
     ]).filter(pl.col("movie_1") != pl.col("movie_2"))
 
@@ -59,68 +59,86 @@ def prep_game_data(parquet_path: Path) -> pl.DataFrame:
 
     return edges_df, graph_df
 
-def find_connections(actor1: str, actor2: str, actor3: str, edges_df: pl.DataFrame) -> pl.DataFrame:
+# controller: game logic
+
+def generate_puzzle(graph_df: pl.DataFrame, edges_df: pl.DataFrame) -> dict:
     """
-    Finds valid 3-movie chains connecting the three actors.
+    Samples a 3-movie chain and takes one random actor per movie.
     """
 
-    movies1 = edges_df.filter(pl.col("actor_name") == actor1).select([
-        pl.col("movie_title").alias("movie_1"),
-        pl.col("last_word").alias("match_word_1")
-    ])
+    # sample a valid movie chain
+    chain = graph_df.sample(n = 1)
 
-    movies2 = edges_df.filter(pl.col("actor_name") == actor2).select([
-        pl.col("movie_title").alias("movie_2"),
-        pl.col("first_word").alias("match_word_1"),
-        pl.col("last_word").alias("match_word_2")
-    ])
+    m1 = chain.get_column("movie_1").item()
+    m2 = chain.get_column("movie_2").item()
+    m3 = chain.get_column("movie_3").item()
 
-    movies3 = edges_df.filter(pl.col("actor_name") == actor3).select([
-        pl.col("movie_title").alias("movie_3"),
-        pl.col("first_word").alias("match_word_2")
-    ])
+    def get_random_actor(movie_title: str) -> str:
+        actor = edges_df.filter(
+            pl.col("movie_title") == movie_title
+        ).get_column("actor_name").sample(n = 1).item()
 
-    # inner joins
-    connections_1_to_2 = movies1.join(movies2, on = "match_word_1", how = "inner")
-    final_connections = connections_1_to_2.join(movies3, on = "match_word_2", how = "inner")
+        return actor
 
-    return final_connections
+    return {
+        "clues": [get_random_actor(m1), get_random_actor(m2), get_random_actor(m3)],
+        "answers": [m1, m2, m3]
+    }
+
+# view: user interface (cli)
 
 def play_game():
     """
-    CLI for trivia game. Name 3 actors, returns if there is a connection.
+    CLI for trivia game. 
 
-    version: v0.1.0.
+    Name a separate film each actor has been in. 
+    The last word of the 1st title is the 1st word of the 2nd movie, etc.
+
+    version: v0.2.0.
     """
 
     project_root = Path(__file__).resolve().parents[1]
     data_path = project_root / "data" / "cleaned" / "game_data.parquet"
 
     print("Loading trivia game graph...")
-    game_df = prep_game_data(data_path)
+    edges_df, graph_df = prep_game_data(data_path)
     print("Graph loaded! Type 'quit' at any time to exit.\n")
 
     while True:
-        a1 = input("Enter Actor 1: ").strip()
-        if a1.lower() == "quit": break
+        game = generate_puzzle(graph_df, edges_df)
+        actors = game["clues"]
+        answers = game["answers"]
 
-        a2 = input("Enter Actor 2: ").strip()
-        if a2.lower() == "quit": break
+        print(f"\nActors: {actors[0]} > {actors[1]} > {actors[2]}")
+        print("-" * 50)
 
-        a3 = input("Enter Actor 3: ").strip()
-        if a3.lower() == "quit": break
+        user_m1 = input(f"Movie for {actors[0]}: ").strip().lower()
+        if user_m1.lower() == "quit": break
 
-        print(f"\nSearching for connections between {a1}, {a2}, {a3}...\n")
+        user_m2 = input(f"Movie for {actors[1]}: ").strip().lower()
+        if user_m2.lower() == "quit": break
 
-        results = find_connections(a1, a2, a3, game_df)
+        user_m3 = input(f"Movie for {actors[2]}: ").strip().lower()
+        if user_m3.lower() == "quit": break
 
-        if results.height == 0:
-            print("No connectiond found. Try different actors.\n")
+        # check answers
+        def clean_answer(text):
+            return "".join(char for char in text.lower() if char.isalnum() or char.isspace())
+
+        clean_users = [clean_answer(user_m1), clean_answer(user_m2), clean_answer(user_m3)]
+        clean_reals = [clean_answer(a) for a in answers]
+
+        if clean_users == clean_reals:
+            print("\nCorrect!")
         else:
-            print(f"Found{results.height} connection(s).")
-            for row in results.iter_rows(named = True):
-                print(f"    {row["movie_1"]} -> {row["movie_2"]} -> {row["movie_3"]}")
-            print("\n")
+            retry = input("\nIncorrect! Try again? (y/n): ").strip().lower()
+            if retry == "y":
+                continue
+            else:
+                print(f"   {answers[0]} -> {answers[1]} -> {answers[2]}")
+        
+        play_again = input("\nPlay another round? (y/n): ").strip().lower()
+        if play_again != 'y': break
 
 if __name__ == "__main__":
     play_game()
