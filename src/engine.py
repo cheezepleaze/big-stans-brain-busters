@@ -26,7 +26,8 @@ def prep_game_data(parquet_path: Path) -> pl.DataFrame:
 
     edges_df = words_df.with_columns([
         pl.col("words").list.first().alias("first_word"),
-        pl.col("words").list.last().alias("last_word")
+        pl.col("words").list.last().alias("last_word"),
+        pl.col("words").list.join(" ").alias("clean_title")
     ]).drop("words")
 
     # build unique movie pool
@@ -85,6 +86,35 @@ def generate_puzzle(graph_df: pl.DataFrame, edges_df: pl.DataFrame) -> dict:
         "answers": [m1, m2, m3]
     }
 
+# validation: check for alternate chains
+
+def validate_chain(actors: list[str], user_movies: list[str], edges_df: pl.DataFrame) -> bool:
+    """
+    Validates movie chain if it obeys all rules.
+    """
+
+    # does each movie belong to the actor?
+    for actor, user_movie in zip(actors, user_movies):
+        actor_filmography = (
+            edges_df.filter(pl.col("actor_name") == actor)
+            .get_column("clean_title")
+            .to_list()
+        )
+        if user_movie not in actor_filmography:
+            return False
+
+    # do the titles connect?
+    m1_words = user_movies[0].split()
+    m2_words = user_movies[1].split()
+    m3_words = user_movies[2].split()
+
+    if m1_words[-1] != m2_words[0]:
+        return False
+    if m2_words[-1] != m3_words[0]:
+        return False
+
+    return True
+
 # view: user interface (cli)
 
 def play_game():
@@ -123,12 +153,13 @@ def play_game():
 
         # check answers
         def clean_answer(text):
-            return "".join(char for char in text.lower() if char.isalnum() or char.isspace())
+            cleaned = "".join(char for char in text.lower() if char.isalnum() or char.isspace())
+            return " ".join(cleaned.split())
 
         clean_users = [clean_answer(user_m1), clean_answer(user_m2), clean_answer(user_m3)]
         clean_reals = [clean_answer(a) for a in answers]
 
-        if clean_users == clean_reals:
+        if validate_chain(actors, clean_users, edges_df):
             print("\nCorrect!")
         else:
             retry = input("\nIncorrect! Try again? (y/n): ").strip().lower()
