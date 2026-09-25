@@ -13,6 +13,6 @@ The last word of the 1st title is the 1st word of the 2nd movie, etc.
 ```
 
 ## Current Status
-[x] Data download + digest
-[x] Movie trivia graph
-[ ] Game logic
+- [x] Data download + digest
+- [x] Movie trivia graph
+- [ ] Game logic

@@ -4,9 +4,10 @@
 .env.*
 !.env.example
 
-# python cache
+# python
 __pycache__/
 *.py[cod]
+.python-version
 
 # dist + build artifacts
 dist/
@@ -31,3 +32,4 @@ htmlcov/
 
 # data
 data/
+*.ipynb
