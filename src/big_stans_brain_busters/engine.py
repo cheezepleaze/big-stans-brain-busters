@@ -62,13 +62,13 @@ def prep_game_data(parquet_path: Path) -> pl.DataFrame:
 
 # controller: game logic
 
-def generate_puzzle(graph_df: pl.DataFrame, edges_df: pl.DataFrame) -> dict:
+def generate_puzzle(graph_df: pl.DataFrame, edges_df: pl.DataFrame, seed: int = None) -> dict:
     """
     Samples a 3-movie chain and takes one random actor per movie.
     """
 
-    # sample a valid movie chain
-    chain = graph_df.sample(n = 1)
+    # sample a valid movie chain with seed as today's date
+    chain = graph_df.sample(n = 1, seed = seed)
 
     m1 = chain.get_column("movie_1").item()
     m2 = chain.get_column("movie_2").item()
@@ -127,7 +127,7 @@ def play_game():
     version: v0.2.0.
     """
 
-    project_root = Path(__file__).resolve().parents[1]
+    project_root = Path(__file__).resolve().parents[2]
     data_path = project_root / "data" / "cleaned" / "game_data.parquet"
 
     print("Loading trivia game graph...")
@@ -139,7 +139,7 @@ def play_game():
         actors = game["clues"]
         answers = game["answers"]
 
-        print(f"\nActors: {actors[0]} > {actors[1]} > {actors[2]}")
+        print(f"Actors: {actors[0]} > {actors[1]} > {actors[2]}")
         print("-" * 50)
 
         user_m1 = input(f"Movie for {actors[0]}: ").strip().lower()
@@ -166,7 +166,7 @@ def play_game():
             if retry == "y":
                 continue
             else:
-                print(f"   {answers[0]} -> {answers[1]} -> {answers[2]}")
+                print(f"\nCorrect chain:\n     {answers[0]} -> {answers[1]} -> {answers[2]}")
         
         play_again = input("\nPlay another round? (y/n): ").strip().lower()
         if play_again != 'y': break
