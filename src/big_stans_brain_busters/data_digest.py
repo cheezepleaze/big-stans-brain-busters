@@ -27,9 +27,9 @@ def build_game_data():
         (pl.col("titleType") == "movie") & (pl.col("isAdult") == 0)
     ).select(["tconst", "primaryTitle"]).drop_nulls()
 
-    # ratings > filter only widly-known movies with >= 5000 votes (95%-ile of movie votes is 5910 as of Aug'26)
+    # ratings > filter only widly-known movies @ 95%-ile of movie votes
     ratings = pl.scan_csv(raw_dir / "title.ratings.tsv.gz", **read_kwargs).filter(
-        pl.col("numVotes") >= 5000
+        pl.col("numVotes") >= pl.col("numVotes").quantile(0.95)
     ).select(["tconst"])
 
     # principals > actors + actresses
