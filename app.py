@@ -1,33 +1,30 @@
-import datetime
 from pathlib import Path
+import datetime
+
+import json
 
 import streamlit as st
 
 from big_stans_brain_busters.engine import prep_game_data, generate_puzzle, validate_chain
 
-# cache: only load the parquet once per server start vs on click
+# cache: load pre-computed calendar
 @st.cache_resource
-def load_data():
-    data_path = Path("data/cleaned/game_data.parquet")
-    return prep_game_data(data_path)
+def load_calendar():
+    with open("data/cleaned/2026_calendar.json", "r") as f:
+        return json.load(f)
+calendar = load_calendar()
 
-edges_df, chains_df = load_data()
+# get today's puzzle
+today = datetime.date.today().strftime("%Y-%m-%d")
 
-# determinism: generate today's unique seed
-today = datetime.date.today()
-daily_seed = int(today.strftime("%Y%m%d"))
+# fallback in case they visit on a date we haven't generated yet
+if today not in calendar:
+    st.error("No puzzle available. Dev needs to generate a new calendar.")
+    st.stop()
 
-
-# state mgmt: remember if user has won across page reloads
-if "won" not in st.session_state:
-    st.session_state.won = False
-
-# generate puzzle only once per session into mem
-if "puzzle" not in st.session_state:
-    st.session_state.puzzle = generate_puzzle(chains_df, edges_df, seed = daily_seed)
-
-actors = st.session_state.puzzle["clues"]
-answers = st.session_state.puzzle["answers"]
+today_puzzle = calendar[today]
+actors = today_puzzle["clues"]
+answers = today_puzzle["answers"]
 
 # ui
 st.title("Movie Chain")
@@ -64,10 +61,10 @@ if st.button("Submit Chain", type="primary", disabled = st.session_state.won):
             st.session_state.show_balloons = True
             st.rerun() # force ui refresh to disable text boxes
         else:
-            st.error("Not quite! That chain is invalid or breaks the rules. Try again.")
+            st.error("Incorrect: Chain is invalid. Try again.")
 
 if st.session_state.won:
-    st.success("Correct! Solved!")
+    st.success("Correct!")
     st.write("Come back tomorrow for a new puzzle!")
 
     if st.session_state.get("show_balloons", False):
