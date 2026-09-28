@@ -30,7 +30,7 @@ def build_game_data():
     # ratings > filter only widly-known movies @ 95%-ile of movie votes
     ratings = pl.scan_csv(raw_dir / "title.ratings.tsv.gz", **read_kwargs).filter(
         pl.col("numVotes") >= pl.col("numVotes").quantile(0.95)
-    ).select(["tconst"])
+    ).select(["tconst", "numVotes"])
 
     # principals > actors + actresses
     principals = pl.scan_csv(raw_dir / "title.principals.tsv.gz", **read_kwargs).filter(

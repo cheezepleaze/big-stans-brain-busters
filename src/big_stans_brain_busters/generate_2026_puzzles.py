@@ -3,10 +3,24 @@ from datetime import date, timedelta
 
 import json
 
+import numpy as np
 import polars as pl
 
 from big_stans_brain_busters.engine import prep_game_data
 
+
+def get_difficulty_tier(min_votes: int) -> str:
+    """
+    Assign puzzle difficulty based on vote count.
+    """
+    log_votes = np.log10(min_votes)
+
+    if log_votes >= 5.5:
+        return "Easy"
+    elif log_votes >= 5.0:
+        return "Medium"
+    else:
+        return "Hard"
 
 def build_game_calendar(graph_path: Path, output_path, start_date: date, days: int = 365):
     """
@@ -15,6 +29,12 @@ def build_game_calendar(graph_path: Path, output_path, start_date: date, days: i
 
     print("Loading graph...")
     edges_df, graph_df = prep_game_data(graph_path)
+
+    # ensure dataframe vs lazyframe
+    if isinstance(edges_df, pl.LazyFrame):
+            edges_df = edges_df.collect()
+    if isinstance(graph_df, pl.LazyFrame):
+        graph_df = graph_df.collect()
 
     print(f"Sampling {days} puzzle chains...")
     # sample without replacement

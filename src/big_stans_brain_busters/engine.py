@@ -5,7 +5,7 @@ import polars as pl
 
 # model: data prep and graph build
 
-def prep_game_data(parquet_path: Path) -> pl.DataFrame:
+def prep_game_data(parquet_path: Path) -> tuple[pl.DataFrame, pl.DataFrame]:
     """
     Loads the movies dataset and builds 3-movie puzzle graph.
     """
@@ -62,7 +62,7 @@ def prep_game_data(parquet_path: Path) -> pl.DataFrame:
 
 # controller: game logic
 
-def generate_puzzle(graph_df: pl.DataFrame, edges_df: pl.DataFrame, seed: int = None) -> dict:
+def generate_puzzle(graph_df: pl.DataFrame, edges_df: pl.DataFrame, seed: int = 28) -> dict:
     """
     Samples a 3-movie chain and takes one random actor per movie.
     """

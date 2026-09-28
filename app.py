@@ -3,16 +3,28 @@ import datetime
 
 import json
 
+import polars as pl
+
 import streamlit as st
 
-from big_stans_brain_busters.engine import validate_chain
+from big_stans_brain_busters.engine import validate_chain, prep_game_data
 
 # cache: load pre-computed calendar
 @st.cache_resource
 def load_calendar():
     with open("data/cleaned/2026_calendar.json", "r") as f:
         return json.load(f)
+
+# load graph edges
+@st.cache_resource
+def load_graph():
+    graph_path = Path("data/cleaned/game_data.parquet")
+    edges_df, _ = prep_game_data(graph_path)
+    
+    return edges_df.collect() if isinstance(edges_df, pl.LazyFrame) else edges_df
+    
 calendar = load_calendar()
+edges_df = load_graph()
 
 # get today's puzzle
 today = datetime.date.today()
@@ -72,7 +84,8 @@ if st.button("Submit Chain", type = "primary", disabled = is_game_over):
         if validate_chain(actors, clean_users, edges_df):
             st.session_state.won = True
             st.session_state.show_balloons = True
-            st.rerun() # force ui refresh to disable text boxes
+            # force ui refresh to disable text boxes
+            st.rerun() 
         else:
             # decrement life counter on incorrect
             st.session_state.attempts_left -= 1
@@ -91,6 +104,7 @@ if st.session_state.won:
     if st.session_state.get("show_balloons", False):
         st.balloons()
         st.session_state.show_balloons = False
+
 elif st.session_state.lost:
     st.error("Out of bacons! Game over.")
     st.write("Valid answer chain:")
