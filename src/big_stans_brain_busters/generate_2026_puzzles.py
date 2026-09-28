@@ -10,7 +10,7 @@ from big_stans_brain_busters.engine import prep_game_data
 
 def build_game_calendar(graph_path: Path, output_path, start_date: date, days: int = 365):
     """
-    Generate calendar-year's worth of daily puzzles (JSON)
+    Generate calendar-year's worth of daily puzzles (JSON).
     """
 
     print("Loading graph...")
@@ -27,7 +27,7 @@ def build_game_calendar(graph_path: Path, output_path, start_date: date, days: i
         m1, m2, m3 = chain["movie_1"], chain["movie_2"], chain["movie_3"]
 
         def get_random_actor(movie_title: str) -> str:
-            return = (
+            return (
                 edges_df.filter(pl.col("movie_title") == movie_title)
                 .get_column("actor_name")
                 .sample(n = 1)
@@ -61,7 +61,7 @@ if __name__ == "__main__":
         print("Error: 2026 is over.")
     else:
         print(f"Generating puzzle calendar for remaining {days_remaning} of 2026...")
-        build_annual_calendar(
+        build_game_calendar(
             graph_path, output_json, 
             start_date = start_date, days = days_remaning
         )
