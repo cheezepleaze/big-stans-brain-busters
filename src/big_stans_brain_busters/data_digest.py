@@ -7,7 +7,7 @@ logging.basicConfig(level = logging.INFO,
                     format = "%(asctime)s - %(levelname)s - %(message)s")
 
 def build_game_data():
-    project_root = Path(__file__).resolve().parents[1]
+    project_root = Path(__file__).resolve().parents[2]
     raw_dir = project_root / "data" / "raw"
     cleaned_dir = project_root / "data" / "cleaned"
     cleaned_dir.mkdir(exist_ok = True)
@@ -52,7 +52,8 @@ def build_game_data():
         .join(names, on = "nconst", how = "inner")
         .select([
             pl.col("primaryName").alias("actor_name"),
-            pl.col("primaryTitle").alias("movie_title")
+            pl.col("primaryTitle").alias("movie_title"),
+            pl.col("numVotes").alias("vote_count")
         ]).unique()
     )
 

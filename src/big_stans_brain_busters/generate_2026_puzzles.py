@@ -54,10 +54,21 @@ def build_game_calendar(graph_path: Path, output_path, start_date: date, days: i
                 .item()
             )
 
+        def get_votes(movie: str) -> int:
+            return (
+                edges_df.filter(pl.col("movie_title") == movie)
+                .get_column("vote_count")
+                .head(1)
+                .item()
+            )
+
+        min_chain_votes = min(get_votes(m1), get_votes(m2), get_votes(m3))
+
         date_str = current_date.strftime("%Y-%m-%d")
         calendar[date_str] = {
             "clues": [get_random_actor(m1), get_random_actor(m2), get_random_actor(m3)],
-            "answers": [m1, m2, m3]
+            "answers": [m1, m2, m3],
+            "difficulty": get_difficulty_tier(min_chain_votes)
         }
 
         current_date += timedelta(days = 1)
